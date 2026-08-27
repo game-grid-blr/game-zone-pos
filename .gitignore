@@ -1,0 +1,52 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local SQLite databases and backups
+prisma/*.db
+prisma/*.db-journal
+prisma/*.sqlite
+prisma/*.sqlite3
+prisma/*.sqlite-journal
+prisma/backups/
+
+# Dependencies and package manager caches
+node_modules/
+.pnpm-store/
+.pnpm-home/
+.pnpm-cache/
+
+# Next.js and build output
+.next/
+out/
+dist/
+build/
+coverage/
+.turbo/
+.cache/
+tsconfig.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*.tmp
+*.temp
+.idea/
+.vscode/
+
+# Local deployment metadata
+.vercel/
+.localappdata/
+.tmp/

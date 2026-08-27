@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TableStatus {
+  AVAILABLE
+  RESERVED
+  PLAYING
+  PAUSED
+  TIME_UP
+}
+
+enum SessionStatus {
+  AVAILABLE
+  RESERVED
+  PLAYING
+  PAUSED
+  TIME_UP
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+model GameTable {
+  id        String      @id @default(cuid())
+  name      String
+  gameType  String
+  status    TableStatus @default(AVAILABLE)
+  active    Boolean     @default(true)
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  pricing    Pricing[]
+  sessions   Session[]
+  activeLock ActiveTableLock?
+
+  @@index([active, sortOrder])
+  @@index([gameType])
+}
+
+model Pricing {
+  id              String   @id @default(cuid())
+  gameTableId     String
+  durationMinutes Int
+  price           Int
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gameTable GameTable @relation(fields: [gameTableId], references: [id], onDelete: Cascade)
+
+  @@unique([gameTableId, durationMinutes])
+  @@index([gameTableId, active])
+}
+
+model Session {
+  id                      String        @id @default(cuid())
+  idempotencyKey          String?       @unique
+  sessionNumber           String        @unique
+  gameTableId             String
+  customerName            String?
+  customerPhone           String?
+  startedAt               DateTime
+  endsAt                  DateTime
+  pausedAt                DateTime?
+  remainingSecondsAtPause Int?
+  originalDurationMinutes Int
+  status                  SessionStatus @default(PLAYING)
+  baseAmount              Int
+  discountAmount          Int           @default(0)
+  taxAmount               Int           @default(0)
+  finalAmount             Int
+  paymentStatus           PaymentStatus @default(PAID)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  completedAt             DateTime?
+  cancelledAt             DateTime?
+  refundAmount            Int           @default(0)
+  refundReason            String?
+  refundedAt              DateTime?
+
+  gameTable  GameTable          @relation(fields: [gameTableId], references: [id])
+  extensions SessionExtension[]
+  payments   Payment[]
+  activeLock ActiveTableLock?
+  audits     AuditLog[]         @relation("SessionAudit")
+
+  @@index([gameTableId, status])
+  @@index([createdAt])
+  @@index([paymentStatus])
+  @@index([sessionNumber])
+  @@index([customerName])
+  @@index([customerPhone])
+}
+
+model ActiveTableLock {
+  id          String   @id @default(cuid())
+  gameTableId String   @unique
+  sessionId   String   @unique
+  createdAt   DateTime @default(now())
+
+  gameTable GameTable @relation(fields: [gameTableId], references: [id], onDelete: Cascade)
+  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model SessionExtension {
+  id              String        @id @default(cuid())
+  idempotencyKey  String?       @unique
+  sessionId       String
+  durationMinutes Int
+  amount          Int
+  taxAmount       Int           @default(0)
+  paymentMethod   PaymentMethod
+  createdAt       DateTime      @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model Payment {
+  id                   String        @id @default(cuid())
+  idempotencyKey       String?       @unique
+  sessionId            String
+  amount               Int
+  paymentMethod        PaymentMethod
+  paymentStatus        PaymentStatus @default(PAID)
+  transactionReference String?
+  createdAt            DateTime      @default(now())
+  refundedAt           DateTime?
+  refundAmount         Int           @default(0)
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([paymentMethod])
+  @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  sessionId  String?
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session Session? @relation("SessionAudit", fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  audits AuditLog[]
+
+  @@index([role, active])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

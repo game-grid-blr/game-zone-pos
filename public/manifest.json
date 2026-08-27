@@ -1,0 +1,17 @@
+{
+  "name": "Fort Game Zone POS",
+  "short_name": "Fort POS",
+  "description": "Timed game-zone POS and session manager",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8f7f4",
+  "theme_color": "#187d8f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

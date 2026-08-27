@@ -1,0 +1,61 @@
+{
+  "name": "fort-game-zone-pos",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate --schema prisma/schema.prisma && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:generate:postgres": "prisma generate --schema prisma/schema.prisma",
+    "prisma:generate:sqlite": "prisma generate --schema prisma/schema.sqlite.prisma",
+    "db:push": "prisma db push --schema prisma/schema.prisma",
+    "db:setup": "pnpm db:setup:sqlite",
+    "db:setup:sqlite": "cross-env DATABASE_URL=file:./dev.db node scripts/setup-db.cjs",
+    "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "db:import:sqlite": "node scripts/import-sqlite-to-postgres.cjs",
+    "db:verify:migration": "node scripts/verify-postgres-migration.cjs",
+    "seed": "prisma db seed",
+    "seed:postgres": "prisma db seed --schema prisma/schema.prisma",
+    "seed:sqlite": "cross-env DATABASE_URL=file:./dev.db prisma db seed --schema prisma/schema.sqlite.prisma",
+    "test:setup": "cross-env DATABASE_URL=file:./test.db prisma generate --schema prisma/schema.sqlite.prisma && cross-env DATABASE_URL=file:./test.db node scripts/setup-db.cjs",
+    "test": "pnpm test:setup && cross-env DATABASE_URL=file:./test.db node --experimental-loader ./scripts/ts-node-loader.mjs --test tests/session-service.node.test.mjs",
+    "test:postgres": "node scripts/run-postgres-tests.cjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.468.0",
+    "next": "^15.5.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.7",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.34.0",
+    "eslint-config-next": "^15.5.2",
+    "postcss": "^8.5.6",
+    "prisma": "^6.15.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.cjs"
+  },
+  "packageManager": "pnpm@11.19.0"
+}
