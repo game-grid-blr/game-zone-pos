@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, History, KeyRound, LayoutDashboard, LogOut, Settings } from "lucide-react";
@@ -8,6 +8,7 @@ import { clsx } from "clsx";
 import type { UserSummary } from "@/types/pos";
 import { Button } from "@/components/Button";
 import { PasswordChangeModal } from "@/components/PasswordChangeModal";
+import { businessInitials, normalizeBusinessName, posTitle } from "@/lib/branding";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -16,10 +17,24 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings, admin: true }
 ];
 
-export function AppShell({ user, children }: { user: UserSummary; children: React.ReactNode }) {
+export function AppShell({
+  user,
+  businessName,
+  children
+}: {
+  user: UserSummary;
+  businessName?: string | null;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [changingPassword, setChangingPassword] = useState(false);
+  const brandName = normalizeBusinessName(businessName);
+  const initials = businessInitials(brandName);
+
+  useEffect(() => {
+    document.title = posTitle(brandName);
+  }, [brandName]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -32,10 +47,10 @@ export function AppShell({ user, children }: { user: UserSummary; children: Reac
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-3 lg:px-6">
           <Link href="/dashboard" className="flex min-w-0 items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-pool text-lg font-black text-white">
-              FG
+              {initials}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-lg font-black">Fort Game Zone</span>
+              <span className="block truncate text-lg font-black">{brandName}</span>
               <span className="block truncate text-xs font-semibold uppercase tracking-wide text-black/55 dark:text-white/55">
                 POS Session Manager
               </span>

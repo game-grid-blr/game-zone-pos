@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
 import { Button } from "@/components/Button";
+import { businessInitials, normalizeBusinessName, posTitle } from "@/lib/branding";
 
-export function LoginForm() {
+export function LoginForm({ businessName }: { businessName?: string | null }) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const brandName = normalizeBusinessName(businessName);
+  const initials = businessInitials(brandName);
+
+  useEffect(() => {
+    document.title = posTitle(brandName);
+  }, [brandName]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -37,8 +44,8 @@ export function LoginForm() {
   return (
     <form onSubmit={submit} className="w-full max-w-md rounded-md bg-white p-6 shadow-pos dark:bg-white/10">
       <div className="mb-6">
-        <div className="mb-3 grid h-14 w-14 place-items-center rounded-md bg-pool text-xl font-black text-white">FG</div>
-        <h1 className="text-3xl font-black">Fort Game Zone POS</h1>
+        <div className="mb-3 grid h-14 w-14 place-items-center rounded-md bg-pool text-xl font-black text-white">{initials}</div>
+        <h1 className="text-3xl font-black">{brandName} POS</h1>
         <p className="mt-1 text-sm font-semibold text-black/55 dark:text-white/60">Staff sign in</p>
       </div>
 

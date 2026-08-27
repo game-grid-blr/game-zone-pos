@@ -22,6 +22,7 @@ export function ReportsPanel({ user }: { user: UserSummary }) {
   const [period, setPeriod] = useState<"daily" | "monthly">("daily");
   const [report, setReport] = useState<ReportData | null>(null);
   const [currency, setCurrency] = useState("INR");
+  const [businessName, setBusinessName] = useState<string>();
 
   const load = useCallback(async () => {
     const [reportResponse, settingsResponse] = await Promise.all([
@@ -32,6 +33,7 @@ export function ReportsPanel({ user }: { user: UserSummary }) {
     if (settingsResponse.ok) {
       const data = await settingsResponse.json();
       setCurrency(data.settings.currency);
+      setBusinessName(data.settings.businessName);
     }
   }, [period]);
 
@@ -40,7 +42,7 @@ export function ReportsPanel({ user }: { user: UserSummary }) {
   }, [load]);
 
   return (
-    <AppShell user={user}>
+    <AppShell user={user} businessName={businessName}>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-black lg:text-4xl">Reports</h1>

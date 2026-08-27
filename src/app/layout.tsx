@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
+import { DEFAULT_BUSINESS_NAME, posTitle } from "@/lib/branding";
 
 export const metadata: Metadata = {
-  title: "Fort Game Zone POS",
-  description: "Timed game-session POS for Fort Game Zone",
+  title: posTitle(),
+  description: `Timed game-session POS for ${DEFAULT_BUSINESS_NAME}`,
   manifest: "/manifest.json"
 };
 
