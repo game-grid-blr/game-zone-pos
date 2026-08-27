@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiUser, jsonError, ok } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
@@ -37,6 +38,99 @@ const settingsSchema = z.object({
   tables: z.array(tableSchema).optional()
 });
 
+type PricingInput = z.infer<typeof pricingSchema>;
+type TableInput = z.infer<typeof tableSchema>;
+
+type ExistingTable = {
+  id: string;
+  name: string;
+  gameType: string;
+  active: boolean;
+  sortOrder: number;
+  pricing: ExistingPrice[];
+};
+
+type ExistingPrice = {
+  durationMinutes: number;
+  price: number;
+  active: boolean;
+};
+
+const SETTINGS_TRANSACTION_TIMEOUT_MS = 15_000;
+const SETTINGS_TRANSACTION_MAX_WAIT_MS = 10_000;
+
+function tableChanged(table: ExistingTable, input: TableInput) {
+  return table.name !== input.name || table.gameType !== input.gameType || table.active !== input.active || table.sortOrder !== input.sortOrder;
+}
+
+function priceChanged(price: ExistingPrice | undefined, input: PricingInput) {
+  return !price || price.price !== input.price || price.active !== input.active;
+}
+
+function redactSecrets(value: string) {
+  return value
+    .replace(/postgres(?:ql)?:\/\/[^\s"'`]+/gi, "postgresql://<redacted>")
+    .replace(/\b(DATABASE_URL|DIRECT_URL|AUTH_SECRET|password|passwordHash)\b\s*[:=]\s*["']?[^"',\s}]+/gi, "$1=<redacted>");
+}
+
+function redactForLog(value: unknown): unknown {
+  if (typeof value === "string") return redactSecrets(value);
+  if (Array.isArray(value)) return value.map((item) => redactForLog(item));
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      /password|secret|url/i.test(key) ? "<redacted>" : redactForLog(item)
+    ])
+  );
+}
+
+function settingsErrorDetails(error: unknown) {
+  if (error instanceof z.ZodError) {
+    return {
+      name: "ZodError",
+      issues: error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        code: issue.code,
+        message: issue.message
+      }))
+    };
+  }
+
+  if (error instanceof Error) {
+    const details: Record<string, unknown> = {
+      name: error.name,
+      message: redactSecrets(error.message)
+    };
+    if (error.stack) details.stack = redactSecrets(error.stack);
+
+    const prismaError = error as Error & { code?: unknown; meta?: unknown; clientVersion?: unknown };
+    if (prismaError.code) details.code = prismaError.code;
+    if (prismaError.meta) details.meta = redactForLog(prismaError.meta);
+    if (prismaError.clientVersion) details.clientVersion = prismaError.clientVersion;
+    return details;
+  }
+
+  return { error: redactForLog(error) };
+}
+
+function settingsJsonError(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    "message" in error &&
+    typeof error.status === "number" &&
+    typeof error.message === "string"
+  ) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+
+  console.error("PUT /api/settings failed", settingsErrorDetails(error));
+  return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+}
+
 export async function GET() {
   try {
     await apiUser();
@@ -59,60 +153,111 @@ export async function PUT(request: Request) {
     const body = settingsSchema.parse(await request.json());
     const { tables, ...settingsInput } = body;
 
-    await prisma.$transaction(async (tx) => {
-      if (Object.keys(settingsInput).length) await updateSettings(settingsInput, tx);
+    await prisma.$transaction(
+      async (tx) => {
+        if (Object.keys(settingsInput).length) await updateSettings(settingsInput, tx);
 
-      if (tables) {
-        for (const tableInput of tables) {
-          const table = tableInput.id
-            ? await tx.gameTable.update({
-                where: { id: tableInput.id },
-                data: {
-                  name: tableInput.name,
-                  gameType: tableInput.gameType,
-                  active: tableInput.active,
-                  sortOrder: tableInput.sortOrder
+        if (tables) {
+          const existingTableIds = tables.map((table) => table.id).filter((id): id is string => Boolean(id));
+          const existingTables = existingTableIds.length
+            ? await tx.gameTable.findMany({
+                where: { id: { in: existingTableIds } },
+                select: {
+                  id: true,
+                  name: true,
+                  gameType: true,
+                  active: true,
+                  sortOrder: true,
+                  pricing: {
+                    select: { durationMinutes: true, price: true, active: true }
+                  }
                 }
               })
-            : await tx.gameTable.create({
-                data: {
-                  name: tableInput.name,
-                  gameType: tableInput.gameType,
-                  active: tableInput.active,
-                  sortOrder: tableInput.sortOrder
+            : [];
+          const existingTableById = new Map(existingTables.map((table) => [table.id, table]));
+
+          for (const tableInput of tables) {
+            const existingTable = tableInput.id ? existingTableById.get(tableInput.id) : undefined;
+            const table =
+              tableInput.id && existingTable && !tableChanged(existingTable, tableInput)
+                ? existingTable
+                : tableInput.id
+                  ? await tx.gameTable.update({
+                      where: { id: tableInput.id },
+                      data: {
+                        name: tableInput.name,
+                        gameType: tableInput.gameType,
+                        active: tableInput.active,
+                        sortOrder: tableInput.sortOrder
+                      },
+                      select: {
+                        id: true,
+                        name: true,
+                        gameType: true,
+                        active: true,
+                        sortOrder: true,
+                        pricing: {
+                          select: { durationMinutes: true, price: true, active: true }
+                        }
+                      }
+                    })
+                  : await tx.gameTable.create({
+                      data: {
+                        name: tableInput.name,
+                        gameType: tableInput.gameType,
+                        active: tableInput.active,
+                        sortOrder: tableInput.sortOrder
+                      },
+                      select: {
+                        id: true,
+                        name: true,
+                        gameType: true,
+                        active: true,
+                        sortOrder: true,
+                        pricing: {
+                          select: { durationMinutes: true, price: true, active: true }
+                        }
+                      }
+                    });
+
+            const existingPriceByDuration = new Map((existingTable?.pricing ?? []).map((price) => [price.durationMinutes, price]));
+            for (const price of tableInput.pricing) {
+              if (tableInput.id && !priceChanged(existingPriceByDuration.get(price.durationMinutes), price)) continue;
+
+              await tx.pricing.upsert({
+                where: {
+                  gameTableId_durationMinutes: {
+                    gameTableId: table.id,
+                    durationMinutes: price.durationMinutes
+                  }
+                },
+                update: { price: price.price, active: price.active },
+                create: {
+                  gameTableId: table.id,
+                  durationMinutes: price.durationMinutes,
+                  price: price.price,
+                  active: price.active
                 }
               });
-
-          for (const price of tableInput.pricing) {
-            await tx.pricing.upsert({
-              where: {
-                gameTableId_durationMinutes: {
-                  gameTableId: table.id,
-                  durationMinutes: price.durationMinutes
-                }
-              },
-              update: { price: price.price, active: price.active },
-              create: {
-                gameTableId: table.id,
-                durationMinutes: price.durationMinutes,
-                price: price.price,
-                active: price.active
-              }
-            });
+            }
           }
         }
-      }
 
-      await tx.auditLog.create({
-        data: {
-          userId: user.id,
-          action: "SETTINGS_UPDATED",
-          entityType: "SETTINGS",
-          entityId: "global",
-          metadata: JSON.stringify({ settings: Object.keys(settingsInput), tables: tables?.length ?? 0 })
-        }
-      });
-    });
+        await tx.auditLog.create({
+          data: {
+            userId: user.id,
+            action: "SETTINGS_UPDATED",
+            entityType: "SETTINGS",
+            entityId: "global",
+            metadata: JSON.stringify({ settings: Object.keys(settingsInput), tables: tables?.length ?? 0 })
+          }
+        });
+      },
+      {
+        maxWait: SETTINGS_TRANSACTION_MAX_WAIT_MS,
+        timeout: SETTINGS_TRANSACTION_TIMEOUT_MS
+      }
+    );
 
     const [settings, updatedTables] = await Promise.all([
       getSettings(),
@@ -123,6 +268,6 @@ export async function PUT(request: Request) {
     ]);
     return ok({ settings, tables: updatedTables });
   } catch (error) {
-    return jsonError(error);
+    return settingsJsonError(error);
   }
 }

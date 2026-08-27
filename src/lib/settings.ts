@@ -84,7 +84,15 @@ export async function updateSettings(values: Partial<AppSettings>, client: Clien
     value: Array.isArray(value) ? JSON.stringify(value) : String(value)
   }));
 
+  const currentRows = await client.appSetting.findMany({
+    where: { key: { in: serialized.map((setting) => setting.key) } },
+    select: { key: true, value: true }
+  });
+  const currentValues = new Map(currentRows.map((row) => [row.key, row.value]));
+
   for (const setting of serialized) {
+    if (currentValues.get(setting.key) === setting.value) continue;
+
     await client.appSetting.upsert({
       where: { key: setting.key },
       create: setting,
