@@ -1,4 +1,5 @@
 import type { PaymentMethod, Prisma, PrismaClient, SessionStatus } from "@prisma/client";
+import { normalizeCustomerPhone } from "./phone";
 import { prisma } from "./prisma";
 import { calculateTax, getSettings } from "./settings";
 import { remainingSeconds, todayRange, monthRange, rangeForBusinessDate } from "./time";
@@ -84,6 +85,10 @@ async function audit(
 
 export async function startSession(input: StartSessionInput, client: PrismaClient = prisma) {
   const now = input.now ?? new Date();
+  const rawCustomerPhone = input.customerPhone?.trim();
+  if (!rawCustomerPhone) throw new PosError("Customer phone is required");
+  const customerPhone = normalizeCustomerPhone(rawCustomerPhone);
+  if (!customerPhone) throw new PosError("Enter a valid Indian mobile number");
   const idempotencyKey = normalizedIdempotencyKey(input.idempotencyKey);
   if (idempotencyKey) {
     const existing = await client.session.findUnique({ where: { idempotencyKey }, include: sessionInclude });
@@ -120,7 +125,7 @@ export async function startSession(input: StartSessionInput, client: PrismaClien
           sessionNumber: sessionNumber(now),
           gameTableId: table.id,
           customerName: input.customerName?.trim() || null,
-          customerPhone: input.customerPhone?.trim() || null,
+          customerPhone,
           startedAt,
           endsAt,
           originalDurationMinutes: input.durationMinutes,

@@ -169,6 +169,7 @@ export function DashboardClient({ user }: { user: UserSummary }) {
           table={startTable}
           settings={settings}
           onClose={() => setStartTable(null)}
+          onCreated={load}
           onDone={() => {
             setStartTable(null);
             load();

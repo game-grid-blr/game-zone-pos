@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { MessageCircle, X } from "lucide-react";
 import type { PaymentMethod } from "@prisma/client";
 import { Button } from "@/components/Button";
 import { PaymentModal } from "@/components/PaymentModal";
 import { formatMoney, rupeesToPaise } from "@/lib/money";
+import { normalizeCustomerPhone } from "@/lib/phone";
+import { whatsappReceiptUrl } from "@/lib/receipt";
 import type { AppSettings } from "@/lib/settings";
-import type { GameTableDTO } from "@/types/pos";
+import type { GameTableDTO, SessionDTO } from "@/types/pos";
 
 function makeIdempotencyKey() {
   return `start-session:${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`}`;
@@ -17,11 +19,13 @@ export function StartSessionModal({
   table,
   settings,
   onClose,
+  onCreated,
   onDone
 }: {
   table: GameTableDTO;
   settings: AppSettings;
   onClose: () => void;
+  onCreated?: () => void | Promise<void>;
   onDone: () => void;
 }) {
   const firstDuration = table.pricing[0]?.durationMinutes ?? settings.durationOptions[0] ?? 15;
@@ -33,6 +37,7 @@ export function StartSessionModal({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [createdSession, setCreatedSession] = useState<SessionDTO | null>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
   if (!idempotencyKeyRef.current) idempotencyKeyRef.current = makeIdempotencyKey();
 
@@ -44,12 +49,22 @@ export function StartSessionModal({
   const taxBase = Math.max(0, (pricing?.price ?? 0) - discountAmount);
   const taxAmount = settings.taxEnabled ? Math.round((taxBase * settings.taxRatePercent) / 100) : 0;
   const finalAmount = Math.max(0, taxBase + taxAmount);
+  const createdWhatsAppUrl = createdSession ? whatsappReceiptUrl(createdSession, settings) : null;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
     if (!pricing) {
       setError("Configure a price for this duration first.");
+      return;
+    }
+    const normalizedPhone = normalizeCustomerPhone(customerPhone);
+    if (!customerPhone.trim()) {
+      setError("Customer phone is required.");
+      return;
+    }
+    if (!normalizedPhone) {
+      setError("Enter a valid Indian mobile number.");
       return;
     }
     setLoading(true);
@@ -61,7 +76,7 @@ export function StartSessionModal({
         durationMinutes,
         idempotencyKey: idempotencyKeyRef.current,
         customerName,
-        customerPhone,
+        customerPhone: normalizedPhone,
         paymentMethod,
         discountAmount
       })
@@ -72,12 +87,56 @@ export function StartSessionModal({
       setError(data.error ?? "Could not start session");
       return;
     }
-    onDone();
+    const data = (await response.json()) as { session: SessionDTO };
+    setCreatedSession(data.session);
+    await onCreated?.();
   }
 
   function applyCustom() {
     const minutes = Number(customDuration);
     if (Number.isFinite(minutes) && minutes > 0) setDurationMinutes(Math.round(minutes));
+  }
+
+  if (createdSession) {
+    return (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+        <div className="w-full max-w-lg rounded-md bg-paper p-5 text-ink shadow-pos dark:bg-[#171a1d] dark:text-white">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black">Bill Created</h2>
+              <p className="text-sm font-bold text-black/55 dark:text-white/55">{createdSession.sessionNumber}</p>
+            </div>
+            <button type="button" onClick={onDone} className="grid h-11 w-11 place-items-center rounded-md bg-white ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10" title="Close">
+              <X size={22} />
+            </button>
+          </div>
+
+          <div className="mb-5 rounded-md bg-white p-4 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10">
+            <div className="flex justify-between text-sm font-bold"><span>Customer Phone</span><span>{createdSession.customerPhone}</span></div>
+            <div className="mt-2 flex justify-between text-sm font-bold"><span>Payment</span><span>{createdSession.payments.map((payment) => payment.paymentMethod).join(", ")}</span></div>
+            <div className="mt-2 flex justify-between text-2xl font-black"><span>Total</span><span>{formatMoney(createdSession.finalAmount, settings.currency)}</span></div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button type="button" tone="quiet" size="lg" onClick={onDone}>
+              Done
+            </Button>
+            {createdWhatsAppUrl ? (
+              <a
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-md bg-mint px-5 text-lg font-semibold text-white transition hover:bg-[#27835d]"
+                href={createdWhatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle size={22} />
+                Send Bill on WhatsApp
+              </a>
+            ) : null}
+          </div>
+          <p className="mt-3 text-sm font-semibold text-black/55 dark:text-white/60">WhatsApp opens with the bill ready. Press Send there.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -133,7 +192,10 @@ export function StartSessionModal({
           />
           <input
             className="h-12 rounded-md border border-black/15 bg-white px-3 outline-none focus:border-pool dark:border-white/15 dark:bg-black/20"
-            placeholder="Phone optional"
+            placeholder="Phone required"
+            inputMode="tel"
+            autoComplete="tel"
+            required
             value={customerPhone}
             onChange={(event) => setCustomerPhone(event.target.value)}
           />
