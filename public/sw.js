@@ -1,4 +1,4 @@
-const CACHE_NAME = "fort-game-zone-pos-v1";
+const CACHE_NAME = "storesync-pos-v1";
 const APP_SHELL = ["/", "/dashboard", "/manifest.json", "/icon.svg"];
 
 self.addEventListener("install", (event) => {

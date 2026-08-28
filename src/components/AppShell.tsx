@@ -33,8 +33,8 @@ export function AppShell({
   const initials = businessInitials(brandName);
 
   useEffect(() => {
-    document.title = posTitle(brandName);
-  }, [brandName]);
+    document.title = posTitle(businessName);
+  }, [businessName]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });

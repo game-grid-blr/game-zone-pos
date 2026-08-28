@@ -1,7 +1,7 @@
 {
-  "name": "Fort Game Zone POS",
-  "short_name": "Fort POS",
-  "description": "Timed game-zone POS and session manager",
+  "name": "StoreSync POS",
+  "short_name": "StoreSync",
+  "description": "Smart Billing. Smooth Business.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#f8f7f4",

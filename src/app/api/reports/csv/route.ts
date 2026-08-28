@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiUser, jsonError } from "@/lib/api";
+import { PRODUCT_SLUG } from "@/lib/branding";
 import { formatMoney } from "@/lib/money";
 import { getReport } from "@/lib/session-service";
 
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="fort-game-zone-${period}-report.csv"`
+        "Content-Disposition": `attachment; filename="${PRODUCT_SLUG}-${period}-report.csv"`
       }
     });
   } catch (error) {

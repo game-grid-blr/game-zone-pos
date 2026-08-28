@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { DEFAULT_BUSINESS_NAME, DEFAULT_RECEIPT_FOOTER } from "./branding";
 import { prisma } from "./prisma";
 
 export type AppSettings = {
@@ -19,7 +20,7 @@ export type AppSettings = {
 };
 
 const defaults: AppSettings = {
-  businessName: "Fort Game Zone",
+  businessName: DEFAULT_BUSINESS_NAME,
   businessAddress: "",
   businessPhone: "",
   currency: "INR",
@@ -28,7 +29,7 @@ const defaults: AppSettings = {
   durationOptions: [15, 30, 45, 60],
   warningTimeMinutes: 5,
   paymentMethods: ["CASH", "UPI", "CARD"],
-  receiptFooter: "Thanks for playing at Fort Game Zone",
+  receiptFooter: DEFAULT_RECEIPT_FOOTER,
   warningSound: "soft-beep",
   expiryAlarm: "loud-alarm",
   alarmFrequency: 880,

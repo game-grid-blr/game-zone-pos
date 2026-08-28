@@ -4,20 +4,19 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
 import { Button } from "@/components/Button";
-import { businessInitials, normalizeBusinessName, posTitle } from "@/lib/branding";
+import { PRODUCT_NAME, PRODUCT_TAGLINE, productInitials } from "@/lib/branding";
 
-export function LoginForm({ businessName }: { businessName?: string | null }) {
+export function LoginForm() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const brandName = normalizeBusinessName(businessName);
-  const initials = businessInitials(brandName);
+  const initials = productInitials();
 
   useEffect(() => {
-    document.title = posTitle(brandName);
-  }, [brandName]);
+    document.title = PRODUCT_NAME;
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -45,8 +44,9 @@ export function LoginForm({ businessName }: { businessName?: string | null }) {
     <form onSubmit={submit} className="w-full max-w-md rounded-md bg-white p-6 shadow-pos dark:bg-white/10">
       <div className="mb-6">
         <div className="mb-3 grid h-14 w-14 place-items-center rounded-md bg-pool text-xl font-black text-white">{initials}</div>
-        <h1 className="text-3xl font-black">{brandName} POS</h1>
-        <p className="mt-1 text-sm font-semibold text-black/55 dark:text-white/60">Staff sign in</p>
+        <h1 className="text-3xl font-black">{PRODUCT_NAME}</h1>
+        <p className="mt-1 text-sm font-semibold text-black/55 dark:text-white/60">{PRODUCT_TAGLINE}</p>
+        <p className="mt-3 text-sm font-semibold text-black/55 dark:text-white/60">Staff sign in</p>
       </div>
 
       <label className="mb-4 block">

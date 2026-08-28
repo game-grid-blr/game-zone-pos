@@ -5,6 +5,7 @@ import { Bell, Plus, Save } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/Button";
 import { useAlarm } from "@/hooks/useAlarm";
+import { DEFAULT_BUSINESS_NAME, DEFAULT_RECEIPT_FOOTER } from "@/lib/branding";
 import { paiseToRupees, rupeesToPaise } from "@/lib/money";
 import type { AppSettings } from "@/lib/settings";
 import type { GameTableDTO, UserSummary } from "@/types/pos";
@@ -15,7 +16,7 @@ type SettingsPayload = {
 };
 
 const emptySettings: AppSettings = {
-  businessName: "Fort Game Zone",
+  businessName: DEFAULT_BUSINESS_NAME,
   businessAddress: "",
   businessPhone: "",
   currency: "INR",
@@ -24,7 +25,7 @@ const emptySettings: AppSettings = {
   durationOptions: [15, 30, 45, 60],
   warningTimeMinutes: 5,
   paymentMethods: ["CASH", "UPI", "CARD"],
-  receiptFooter: "Thanks for playing at Fort Game Zone",
+  receiptFooter: DEFAULT_RECEIPT_FOOTER,
   warningSound: "soft-beep",
   expiryAlarm: "loud-alarm",
   alarmFrequency: 880,

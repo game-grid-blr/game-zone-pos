@@ -8,9 +8,10 @@ import { DashboardStats } from "@/components/DashboardStats";
 import { GameTableCard } from "@/components/GameTableCard";
 import { StartSessionModal } from "@/components/StartSessionModal";
 import { useAlarm } from "@/hooks/useAlarm";
+import { DEFAULT_BUSINESS_NAME, DEFAULT_RECEIPT_FOOTER, PRODUCT_SLUG } from "@/lib/branding";
 import type { DashboardData, GameTableDTO, SessionDTO, UserSummary } from "@/types/pos";
 
-const CACHE_KEY = "fort-game-zone-dashboard-cache";
+const CACHE_KEY = `${PRODUCT_SLUG}-dashboard-cache`;
 
 export function DashboardClient({ user }: { user: UserSummary }) {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -20,7 +21,7 @@ export function DashboardClient({ user }: { user: UserSummary }) {
   const [alertSession, setAlertSession] = useState<SessionDTO | null>(null);
   const [acknowledged, setAcknowledged] = useState<Record<string, boolean>>({});
   const settings = data?.settings ?? {
-    businessName: "Fort Game Zone",
+    businessName: DEFAULT_BUSINESS_NAME,
     businessAddress: "",
     businessPhone: "",
     currency: "INR",
@@ -29,7 +30,7 @@ export function DashboardClient({ user }: { user: UserSummary }) {
     durationOptions: [15, 30, 45, 60],
     warningTimeMinutes: 5,
     paymentMethods: ["CASH", "UPI", "CARD"],
-    receiptFooter: "Thanks for playing at Fort Game Zone",
+    receiptFooter: DEFAULT_RECEIPT_FOOTER,
     warningSound: "soft-beep",
     expiryAlarm: "loud-alarm",
     alarmFrequency: 880,
